@@ -1,0 +1,8 @@
+TalcoAdministration — GroupeTalco / TalcoAdministration / © TalcoInc2026
+
+1. Depot GitHub "administration" -> https://natlacaxi.github.io/administration/ (le portail l'ouvre deja a cette adresse).
+2. Reserve aux admins Anton et Talco : lit la session enregistree (itn-2) ; Exchange (itn-3) doit avoir ete ouvert une fois avec ce compte.
+3. Fonctions : liste des comptes ITN et Exchange, suppression d'un compte, reinitialisation (ITN, Exchange ou tout)
+   en conservant les admins. Chaque reinitialisation demande de taper RESET.
+4. Les vraies protections sont dans les regles Firebase (regles/ du portail) : sans elles, la page ne peut rien lire ni supprimer.
+5. Les comptes de connexion (Authentication) ne se suppriment que depuis la console Firebase.

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TalcoAdministration | Talco-IT-Networks</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{color-scheme:light dark;--bg:#f1f5f9;--card:#fff;--tx:#0f172a;--mu:#64748b;--bd:#e2e8f0;--ac:#475569;--rd:#dc2626;--ok:#16a34a}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#131c2e;--tx:#e2e8f0;--mu:#94a3b8;--bd:#24304a;--ac:#94a3b8;--rd:#f87171;--ok:#4ade80}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+main{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:.2em 0}h2{font-size:1.1rem;margin:0 0 .6em}
+.sub{color:var(--mu);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:0 0 16px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:10px 14px;min-height:44px;cursor:pointer}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.d{color:var(--rd);border-color:var(--rd)}
+button:disabled{opacity:.4;cursor:default}
+.list{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.u{border:1px solid var(--bd);border-radius:12px;padding:10px;display:flex;gap:8px;justify-content:space-between;align-items:center}
+.u b{display:block}.u small{color:var(--mu);word-break:break-all}
+.tag{font-size:.7rem;background:var(--ok);color:#fff;border-radius:6px;padding:1px 6px;margin-left:6px}
+#log{font:13px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap;color:var(--mu);max-height:200px;overflow:auto}
+#msg{padding:30px 10px;text-align:center}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>TalcoAdministration</h1>
+  <p class="sub">Gestion des comptes TalcoITN (portail) et Talco Exchange — réservé aux admins.</p>
+  <div id="msg" class="card">Vérification de la session…</div>
+  <div id="app" class="hidden">
+    <div class="card">
+      <h2>Réinitialisation</h2>
+      <p class="sub">Supprime les données de tous les comptes sauf les admins (Anton et Talco). Les comptes de connexion Firebase se suppriment dans la console (Authentication › Users).</p>
+      <div class="bar">
+        <button class="d" id="rAll">Tout réinitialiser (ITN + Exchange)</button>
+        <button class="d" id="rItn">ITN seul</button>
+        <button class="d" id="rEx">Exchange seul</button>
+        <button id="reload">Actualiser</button>
+      </div>
+    </div>
+    <div class="card"><h2>Comptes TalcoITN <span id="n2"></span></h2><div class="list" id="l2"></div></div>
+    <div class="card"><h2>Comptes Exchange <span id="n3"></span></h2><div class="list" id="l3"></div></div>
+    <div class="card"><h2>Journal</h2><div id="log"></div></div>
+  </div>
+</main>
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getDatabase, ref, get, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+const ADMINS = ["anton", "talco"];
+const C2 = {
+  apiKey: "AIzaSyABc0-3-D4kTgnH4-He_yEO8km45ah0BqY", authDomain: "itn-2-fa6a9.firebaseapp.com",
+  databaseURL: "https://itn-2-fa6a9-default-rtdb.europe-west1.firebasedatabase.app", projectId: "itn-2-fa6a9",
+  appId: "1:599829214627:web:a82b6c70638db8ddda1616"
+};
+const C3 = {
+  apiKey: "AIzaSyALu9n3ksX-0mN4u8reRBpFkWAUsVsGswA", authDomain: "itn-3-1b09f.firebaseapp.com",
+  databaseURL: "https://itn-3-1b09f-default-rtdb.europe-west1.firebasedatabase.app", projectId: "itn-3-1b09f",
+  appId: "1:105336373207:web:238065cbea49453d4d1592"
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const hexOf = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+const log = t => { const l = $("#log"); l.textContent = new Date().toLocaleTimeString("fr-FR") + "  " + t + "\n" + l.textContent; };
+const deny = t => { $("#msg").textContent = t; };
+
+let auth2, db2, auth3, db3, me2, me3;
+
+/* ---- 1. Session du portail (projet itn-2) ---- */
+const app2 = getApps().find(a => a.name === "p1") || initializeApp(C2, "p1");
+auth2 = getAuth(app2); db2 = getDatabase(app2);
+const u2 = await new Promise(res => { const off = onAuthStateChanged(auth2, u => { off(); res(u); }); setTimeout(() => res(null), 5000); });
+if (!u2 || !u2.emailVerified) deny("Connectez-vous d’abord au portail TalcoITN avec un compte admin, puis rouvrez TalcoAdministration.");
+else {
+  const prof = (await get(ref(db2, "users/" + u2.uid))).val() || {};
+  if (!ADMINS.includes(prof.pseudo)) deny("Accès réservé aux admins (Anton et Talco).");
+  else { me2 = { uid: u2.uid, ...prof }; await start(); }
+}
+
+/* ---- 2. Compte Exchange (itn-3) : le même accès que celui créé par la page de connexion ---- */
+async function connect3() {
+  const kRef = ref(db2, "users/" + me2.uid + "/sso/exchange");
+  const key = (await get(kRef)).val();
+  if (!key) throw new Error("ouvrez d’abord TalcoExchange une fois avec ce compte");
+  const h = hexOf(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(me2.uid))).slice(0, 32);
+  const app3 = getApps().find(a => a.name === "adm3") || initializeApp(C3, "adm3");
+  auth3 = getAuth(app3); db3 = getDatabase(app3);
+  const cred = await signInWithEmailAndPassword(auth3, "x" + h + "@exchange.talco.invalid", key);
+  me3 = cred.user.uid;
+}
+
+async function start() {
+  $("#msg").classList.add("hidden"); $("#app").classList.remove("hidden");
+  log("Connecté en " + me2.pseudo + " (admin).");
+  try { await connect3(); log("Exchange : connecté."); } catch (e) { log("Exchange indisponible : " + (e.code || e.message)); }
+  await refresh();
+}
+
+/* ---- 3. Listes ---- */
+async function refresh() {
+  try {
+    const u = (await get(ref(db2, "users"))).val() || {};
+    const rows = Object.entries(u);
+    $("#n2").textContent = "(" + rows.length + ")";
+    $("#l2").innerHTML = rows.map(([id, x]) => `<div class="u"><div><b>${esc(x.pseudo)}${ADMINS.includes(x.pseudo) ? '<span class="tag">admin</span>' : ""}</b><small>${esc((x.prenom || "") + " " + (x.nom || ""))} · ${esc(x.email)}</small></div>
+      <button class="d" data-k="2" data-u="${esc(id)}" data-p="${esc(x.pseudo)}" ${ADMINS.includes(x.pseudo) ? "disabled" : ""}>Supprimer</button></div>`).join("") || "<small>Aucun compte.</small>";
+  } catch (e) { log("Lecture ITN refusée : " + (e.code || e.message)); }
+  if (!db3) return;
+  try {
+    const u = (await get(ref(db3, "users"))).val() || {};
+    const rows = Object.entries(u);
+    $("#n3").textContent = "(" + rows.length + ")";
+    $("#l3").innerHTML = rows.map(([id, x]) => `<div class="u"><div><b>${esc(x.id)}${ADMINS.includes(x.id) ? '<span class="tag">admin</span>' : ""}</b><small>${esc(x.name)}</small></div>
+      <button class="d" data-k="3" data-u="${esc(id)}" data-i="${esc(x.id)}" ${ADMINS.includes(x.id) ? "disabled" : ""}>Supprimer</button></div>`).join("") || "<small>Aucun compte.</small>";
+  } catch (e) { log("Lecture Exchange refusée : " + (e.code || e.message)); }
+}
+
+/* ---- 4. Suppressions ---- */
+const PER_USER_3 = ["users", "friends", "requests", "userChats", "scheduled", "push", "incoming", "inbox"];
+const ALL_3 = ["chats", "media", "calls", "requests", "friends", "userChats", "scheduled", "push", "incoming", "inbox"];
+
+async function delItn(uid, pseudo) { await update(ref(db2), { ["users/" + uid]: null, ["pseudos/" + pseudo]: null }); }
+async function delEx(uid, id) { if (!db3) throw new Error("Exchange non connecté"); const u = {}; PER_USER_3.forEach(n => u[n + "/" + uid] = null); if (id) u["idIndex/" + id] = null; await update(ref(db3), u); }
+
+async function resetItn() {
+  const users = (await get(ref(db2, "users"))).val() || {}, ps = (await get(ref(db2, "pseudos"))).val() || {};
+  const u = {};
+  for (const [id, x] of Object.entries(users)) if (!ADMINS.includes(x.pseudo)) u["users/" + id] = null;
+  for (const p of Object.keys(ps)) if (!ADMINS.includes(p)) u["pseudos/" + p] = null;
+  if (Object.keys(u).length) await update(ref(db2), u);
+  log("ITN : " + Object.keys(u).length + " entrées supprimées.");
+}
+async function resetEx() {
+  if (!db3) throw new Error("Exchange non connecté");
+  const users = (await get(ref(db3, "users"))).val() || {};
+  const u = {};
+  ALL_3.forEach(n => u[n] = null);
+  for (const [id, x] of Object.entries(users)) if (!ADMINS.includes(x.id)) { u["users/" + id] = null; u["idIndex/" + x.id] = null; }
+  const idx = (await get(ref(db3, "idIndex"))).val() || {};
+  for (const k of Object.keys(idx)) if (!ADMINS.includes(k)) u["idIndex/" + k] = null;
+  await update(ref(db3), u);
+  log("Exchange : données réinitialisées (profils admin conservés).");
+}
+
+const sure = t => (prompt(t + "\n\nTapez RESET pour confirmer.") || "").trim() === "RESET";
+async function run(f, t) { try { if (sure(t)) { await f(); } } catch (e) { log("Erreur : " + (e.code || e.message)); } await refresh(); }
+
+$("#rItn").onclick = () => run(resetItn, "Supprimer tous les comptes TalcoITN sauf les admins ?");
+$("#rEx").onclick = () => run(resetEx, "Réinitialiser Exchange (messages, amis, comptes) sauf les admins ?");
+$("#rAll").onclick = () => run(async () => { await resetEx(); await resetItn(); }, "Tout réinitialiser (ITN + Exchange) sauf les admins ?");
+$("#reload").onclick = refresh;
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button[data-u]"); if (!b || b.disabled) return;
+  if (!confirm("Supprimer ce compte ?")) return;
+  try { b.dataset.k === "2" ? await delItn(b.dataset.u, b.dataset.p) : await delEx(b.dataset.u, b.dataset.i); log("Compte supprimé."); }
+  catch (er) { log("Erreur : " + (er.code || er.message)); }
+  await refresh();
+});
+</script>
+</body>
+</html>
