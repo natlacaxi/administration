@@ -65,7 +65,7 @@ textarea,select,.tx{font:inherit;font-size:16px;color:var(--tx);background:var(-
     <div class="card">
       <h2>Services</h2>
       <p class="sub">Suspendre un service bloque son ouverture pour tout le monde sauf les admins. Le message s’affiche à la place.</p>
-      <label class="opt" style="display:block"><span style="font-weight:600">Message par défaut</span><input class="tx" id="dMsg" maxlength="300"></label>
+      <label class="opt" style="display:block"><span style="font-weight:600">Message par défaut</span><textarea class="tx" id="dMsg" rows="2" maxlength="300"></textarea></label>
       <div class="bar" style="margin:8px 0 14px"><button id="dSave">Enregistrer le message par défaut</button></div>
       <div class="list" id="svcs"></div>
     </div>
@@ -186,7 +186,7 @@ async function loadStatus() {
     $("#svcs").innerHTML = ids.map(id => { const x = (st.services || {})[id] || {};
       return `<div class="svr" data-id="${esc(id)}"><b>${esc((reg[id] && reg[id].name) || id)}</b>
         <label class="opt"><input type="checkbox" class="sSusp" ${x.suspended ? "checked" : ""}> Suspendu</label>
-        <input class="tx sMsg" maxlength="300" placeholder="Message d’erreur (vide = message par défaut)" value="${esc(x.message || "")}">
+        <textarea class="tx sMsg" rows="2" maxlength="300" placeholder="Message affiché au centre de l’écran (vide = message par défaut)">${esc(x.message || "")}</textarea>
         <button class="p sSave">Enregistrer</button></div>`; }).join("") || "<small>Aucun service.</small>";
   } catch (e) { log("Statut illisible : " + (e.code || e.message)); }
 }
