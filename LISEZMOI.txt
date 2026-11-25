@@ -1,14 +1,8 @@
 TalcoAdministration — GroupeTalco / TalcoAdministration / © TalcoInc2026
 
 1. Depot GitHub "administration" -> https://natlacaxi.github.io/administration/ (le portail l'ouvre deja a cette adresse).
-2. Reserve aux admins Anton et Talco : lit la session enregistree (itn-2). Chaque service (Exchange, Cloud, Map) doit avoir ete ouvert
-   une fois avec le compte admin (le compte admin du service se cree alors tout seul).
-3. Un seul tableau de comptes (ceux du portail, itn-2). "Supprimer" un membre :
-     - ouvre son acces sur chaque serveur de service (cle lue dans itn-2), efface ses donnees (Exchange : profil, amis, messages ;
-       Cloud : profil, notes, messages communaute ; Map : favoris, signalements), supprime son compte Firebase du service,
-       puis supprime son compte du portail (users + pseudos). Chaque serveur ne touche que ses propres donnees.
-4. Reinitialisation : "Tout reinitialiser" ou "<service> seul" (comptes d'acces et donnees de tous les membres, admins conserves).
-   Chaque reinitialisation demande de taper RESET.
-5. Les vraies protections sont dans les regles Firebase (firebase-prive.zip) : sans elles, la page ne peut rien lire ni supprimer.
-6. Les comptes de connexion du portail (Authentication d'itn-2, adresse e-mail) ne se suppriment que depuis la console Firebase.
-   Les comptes Firebase des services (derives) sont, eux, supprimes par la page.
+2. Reserve aux admins Anton et Talco : lit la session enregistree (itn-2) ; Exchange (itn-3) doit avoir ete ouvert une fois avec ce compte.
+3. Fonctions : liste des comptes ITN et Exchange, suppression d'un compte, reinitialisation (ITN, Exchange ou tout)
+   en conservant les admins. Chaque reinitialisation demande de taper RESET.
+4. Les vraies protections sont dans les regles Firebase (regles/ du portail) : sans elles, la page ne peut rien lire ni supprimer.
+5. Les comptes de connexion (Authentication) ne se suppriment que depuis la console Firebase.
